@@ -1,6 +1,21 @@
 @model FormDemo.Models.UserFormModel
+@using System.Text.Json
+@using System.IO
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Env
+@inject FormDemo.Services.IFormTemplateService FormTemplateService
 @{
     ViewData["Title"] = "Home Page";
+
+    // Get the current form template from the service
+    var currentTemplate = (string)ViewData["CurrentTemplate"] ?? FormTemplateService.GetCurrentFormTemplate();
+    var availableTemplates = (IEnumerable<string>)ViewData["AvailableTemplates"] ?? FormTemplateService.GetAvailableTemplates();
+    
+    // Get the form definition from the selected template
+    var formJsonPath = FormTemplateService.GetTemplatePath(currentTemplate);
+    var formJson = System.IO.File.ReadAllText(formJsonPath);
+    var formDef = JsonDocument.Parse(formJson).RootElement;
+    var fields = formDef.GetProperty("fields");
+    var submitLabel = formDef.GetProperty("submit").GetProperty("label").GetString();
 }
 
 <div class="container py-5">
@@ -8,10 +23,24 @@
         <div class="col-md-8 col-lg-6">
             <div class="card shadow-lg border-0 rounded-lg">
                 <div class="card-header bg-primary text-white text-center py-4">
-                    <h3 class="mb-0">User Information Form</h3>
+                    <h3 class="mb-0">@formDef.GetProperty("title").GetString()</h3>
                 </div>
                 <div class="card-body p-4">
-                    @if (ViewData["SubmissionSuccess"] != null && ViewData["SubmissionSuccess"] as bool? == true)
+                    <!-- Template selector -->
+                    <div class="mb-4">
+                        <label class="form-label">Select Form Template:</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var template in availableTemplates)
+                            {
+                                <a href="?template=@template" 
+                                   class="btn @(template == currentTemplate ? "btn-primary" : "btn-outline-secondary") btn-sm">
+                                    @System.IO.Path.GetFileNameWithoutExtension(template)
+                                </a>
+                            }
+                        </div>
+                    </div>
+                    
+                    @if (ViewData["SubmissionSuccess"] != null && (bool)ViewData["SubmissionSuccess"] == true)
                     {
                         <div class="alert alert-success d-flex align-items-center" role="alert">
                             <i class="bi bi-check-circle-fill me-2"></i>
@@ -22,35 +51,62 @@
                     }
                     
                     <p class="text-muted mb-4">
-                        Please enter your information in the fields below.
+                        @formDef.GetProperty("description").GetString()
+                    </p>
+                    
+                    @if (User.Identity?.IsAuthenticated != true)
+                    {
                         <a asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignIn" 
                            class="d-block mt-3 mb-4 btn btn-outline-primary d-flex align-items-center justify-content-center">
                             <i class="bi bi-microsoft me-2"></i>
                             Sign in with Microsoft
                         </a>
-                    </p>
+                    }
 
                     <div asp-validation-summary="All" class="text-danger mb-4"></div>
 
                     <form method="post" asp-controller="Home" asp-action="Index">
-                        <div class="form-floating mb-4">
-                            <input asp-for="Name" class="form-control" placeholder="Enter your name" id="nameInput" />
-                            <label asp-for="Name" for="nameInput">Full Name</label>
-                            <span asp-validation-for="Name" class="text-danger small"></span>
-                        </div>
+                        <!-- Hidden field to maintain template when form is submitted -->
+                        <input type="hidden" name="template" value="@currentTemplate" />
                         
-                        <div class="form-floating mb-4">
-                            <input asp-for="Email" class="form-control" placeholder="Enter your email" type="email" id="emailInput" />
-                            <label asp-for="Email" for="emailInput">Email Address</label>
-                            <span asp-validation-for="Email" class="text-danger small"></span>
-                        </div>
+                        @foreach (var field in fields.EnumerateArray())
+                        {
+                            var type = field.GetProperty("type").GetString();
+                            var name = field.GetProperty("name").GetString();
+                            var label = field.GetProperty("label").GetString();
+                            var placeholder = field.GetProperty("placeholder").GetString();
+                            var inputId = $"{name}Input";
+                            
+                            // Check for default value in the template
+                            var defaultValue = field.TryGetProperty("default", out var defaultProp) ? defaultProp.GetString() : string.Empty;
+
+                            <div class="form-floating mb-4">
+                                @if (name == "Name")
+                                {
+                                    <input asp-for="Name" class="form-control" placeholder="@placeholder" type="@type" id="@inputId" />
+                                    <label asp-for="Name" for="@inputId">@label</label>
+                                    <span asp-validation-for="Name" class="text-danger small"></span>
+                                }
+                                else if (name == "Email")
+                                {
+                                    <input asp-for="Email" class="form-control" placeholder="@placeholder" type="@type" id="@inputId" />
+                                    <label asp-for="Email" for="@inputId">@label</label>
+                                    <span asp-validation-for="Email" class="text-danger small"></span>
+                                }
+                                else
+                                {
+                                    <!-- Fallback for any other fields -->
+                                    <input name="@name" class="form-control" placeholder="@placeholder" type="@type" id="@inputId" value="@defaultValue" />
+                                    <label for="@inputId">@label</label>
+                                }
+                            </div>
+                        }
                         
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-primary btn-lg shadow">Submit Information</button>
+                            <button type="submit" class="btn btn-primary btn-lg shadow">@submitLabel</button>
                         </div>
                     </form>
                 </div>
-                
                 @if (User.Identity?.IsAuthenticated == true)
                 {
                     <div class="card-footer text-center py-3">
@@ -64,7 +120,3 @@
         </div>
     </div>
 </div>
-
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-}

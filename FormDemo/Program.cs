@@ -65,6 +65,9 @@ else
 // Register KeyVaultDiagnostics service
 builder.Services.AddTransient<KeyVaultDiagnostics>();
 
+// Register FormTemplateService
+builder.Services.AddSingleton<IFormTemplateService, FormTemplateService>();
+
 // Configure Azure AD authentication
 var initialScopes = builder.Configuration["MicrosoftGraph:Scopes"]?.Split(' ');
 
