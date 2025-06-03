@@ -1,0 +1,70 @@
+@model FormDemo.Models.UserFormModel
+@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-lg border-0 rounded-lg">
+                <div class="card-header bg-primary text-white text-center py-4">
+                    <h3 class="mb-0">User Information Form</h3>
+                </div>
+                <div class="card-body p-4">
+                    @if (ViewData["SubmissionSuccess"] != null && ViewData["SubmissionSuccess"] as bool? == true)
+                    {
+                        <div class="alert alert-success d-flex align-items-center" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i>
+                            <div>
+                                @ViewData["SubmissionMessage"]
+                            </div>
+                        </div>
+                    }
+                    
+                    <p class="text-muted mb-4">
+                        Please enter your information in the fields below.
+                        <a asp-area="MicrosoftIdentity" asp-controller="Account" asp-action="SignIn" 
+                           class="d-block mt-3 mb-4 btn btn-outline-primary d-flex align-items-center justify-content-center">
+                            <i class="bi bi-microsoft me-2"></i>
+                            Sign in with Microsoft
+                        </a>
+                    </p>
+
+                    <div asp-validation-summary="All" class="text-danger mb-4"></div>
+
+                    <form method="post" asp-controller="Home" asp-action="Index">
+                        <div class="form-floating mb-4">
+                            <input asp-for="Name" class="form-control" placeholder="Enter your name" id="nameInput" />
+                            <label asp-for="Name" for="nameInput">Full Name</label>
+                            <span asp-validation-for="Name" class="text-danger small"></span>
+                        </div>
+                        
+                        <div class="form-floating mb-4">
+                            <input asp-for="Email" class="form-control" placeholder="Enter your email" type="email" id="emailInput" />
+                            <label asp-for="Email" for="emailInput">Email Address</label>
+                            <span asp-validation-for="Email" class="text-danger small"></span>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg shadow">Submit Information</button>
+                        </div>
+                    </form>
+                </div>
+                
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <div class="card-footer text-center py-3">
+                        <div class="small text-muted">
+                            <strong>Signed in as:</strong> 
+                            <span class="fw-bold">@ViewData["GraphApiResult"]</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
