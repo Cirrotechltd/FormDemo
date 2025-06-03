@@ -2,11 +2,16 @@
 @using System.Text.Json
 @using System.IO
 @inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Env
+@inject FormDemo.Services.IFormTemplateService FormTemplateService
 @{
     ViewData["Title"] = "Home Page";
 
-    // Use System.IO.Path.Combine (static method)
-    var formJsonPath = System.IO.Path.Combine(Env.ContentRootPath, "forms", "user-information-form.json");
+    // Get the current form template from the service
+    var currentTemplate = (string)ViewData["CurrentTemplate"] ?? FormTemplateService.GetCurrentFormTemplate();
+    var availableTemplates = (IEnumerable<string>)ViewData["AvailableTemplates"] ?? FormTemplateService.GetAvailableTemplates();
+    
+    // Get the form definition from the selected template
+    var formJsonPath = FormTemplateService.GetTemplatePath(currentTemplate);
     var formJson = System.IO.File.ReadAllText(formJsonPath);
     var formDef = JsonDocument.Parse(formJson).RootElement;
     var fields = formDef.GetProperty("fields");
@@ -21,6 +26,20 @@
                     <h3 class="mb-0">@formDef.GetProperty("title").GetString()</h3>
                 </div>
                 <div class="card-body p-4">
+                    <!-- Template selector -->
+                    <div class="mb-4">
+                        <label class="form-label">Select Form Template:</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var template in availableTemplates)
+                            {
+                                <a href="?template=@template" 
+                                   class="btn @(template == currentTemplate ? "btn-primary" : "btn-outline-secondary") btn-sm">
+                                    @System.IO.Path.GetFileNameWithoutExtension(template)
+                                </a>
+                            }
+                        </div>
+                    </div>
+                    
                     @if (ViewData["SubmissionSuccess"] != null && (bool)ViewData["SubmissionSuccess"] == true)
                     {
                         <div class="alert alert-success d-flex align-items-center" role="alert">
@@ -47,6 +66,9 @@
                     <div asp-validation-summary="All" class="text-danger mb-4"></div>
 
                     <form method="post" asp-controller="Home" asp-action="Index">
+                        <!-- Hidden field to maintain template when form is submitted -->
+                        <input type="hidden" name="template" value="@currentTemplate" />
+                        
                         @foreach (var field in fields.EnumerateArray())
                         {
                             var type = field.GetProperty("type").GetString();
@@ -54,6 +76,9 @@
                             var label = field.GetProperty("label").GetString();
                             var placeholder = field.GetProperty("placeholder").GetString();
                             var inputId = $"{name}Input";
+                            
+                            // Check for default value in the template
+                            var defaultValue = field.TryGetProperty("default", out var defaultProp) ? defaultProp.GetString() : string.Empty;
 
                             <div class="form-floating mb-4">
                                 @if (name == "Name")
@@ -71,7 +96,7 @@
                                 else
                                 {
                                     <!-- Fallback for any other fields -->
-                                    <input name="@name" class="form-control" placeholder="@placeholder" type="@type" id="@inputId" />
+                                    <input name="@name" class="form-control" placeholder="@placeholder" type="@type" id="@inputId" value="@defaultValue" />
                                     <label for="@inputId">@label</label>
                                 }
                             </div>
