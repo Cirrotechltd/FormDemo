@@ -1,0 +1,47 @@
+{
+  "title": "University Information Form (Glasgow)",
+  "description": "Please enter your university and matriculation details.",
+  "fields": [
+    {
+      "type": "text",
+      "name": "Name",
+      "label": "Full Name",
+      "placeholder": "Enter your name",
+      "validation": {
+        "required": true
+      }
+    },
+    {
+      "type": "email",
+      "name": "Email",
+      "label": "Email Address",
+      "placeholder": "Enter your email",
+      "validation": {
+        "required": true,
+        "format": "email"
+      }
+    },
+    {
+      "type": "text",
+      "name": "University",
+      "label": "University",
+      "placeholder": "Enter your university",
+      "default": "Glasgow",
+      "validation": {
+        "required": true
+      }
+    },
+    {
+      "type": "text",
+      "name": "MatriculationNumber",
+      "label": "Matriculation Number",
+      "placeholder": "Enter your matriculation number",
+      "validation": {
+        "required": true
+      }
+    }
+  ],
+  "submit": {
+    "label": "Submit Information"
+  }
+}

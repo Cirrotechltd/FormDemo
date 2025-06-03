@@ -44,10 +44,24 @@ namespace FormDemo.Controllers
         
         [AllowAnonymous]
         [HttpPost]
-        public IActionResult Index(UserFormModel model)
+        public async Task<IActionResult> Index(UserFormModel model)
         {
             if (!ModelState.IsValid)
             {
+                if (User.Identity?.IsAuthenticated == true)
+                {
+                    try
+                    {
+                        var user = await _graphServiceClient.Me.Request().GetAsync();
+                        model.Name = user.DisplayName ?? string.Empty;
+                        model.Email = user.Mail ?? user.UserPrincipalName ?? string.Empty;
+                        ViewData["GraphApiResult"] = user.DisplayName;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error retrieving user data from Graph API");
+                    }
+                }
                 return View(model);
             }
             

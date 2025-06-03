@@ -1,0 +1,28 @@
+{
+  "title": "User Information Form",
+  "description": "Please enter your information in the fields below.",
+  "fields": [
+    {
+      "type": "text",
+      "name": "Name",
+      "label": "Full Name",
+      "placeholder": "Enter your name",
+      "validation": {
+        "required": true
+      }
+    },
+    {
+      "type": "email",
+      "name": "Email",
+      "label": "Email Address",
+      "placeholder": "Enter your email",
+      "validation": {
+        "required": true,
+        "format": "email"
+      }
+    }
+  ],
+  "submit": {
+    "label": "Submit Information"
+  }
+}
