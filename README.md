@@ -2,6 +2,9 @@
 
 A dynamic form application built with ASP.NET Core 8.0 that demonstrates integration with Microsoft services including Azure AD, Microsoft Graph API, and SharePoint Online.
 
+![image](https://github.com/user-attachments/assets/d2d4fc42-4fc6-4fa9-8d5c-a42cfd970806)
+
+
 ## Features
 
 - **Dynamic Form Templates**: Easily create and switch between different form templates defined in JSON
