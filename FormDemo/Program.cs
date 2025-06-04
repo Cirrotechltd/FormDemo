@@ -12,7 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Only set up Azure Key Vault if we're not using local secrets (in production)
 bool useLocalSecrets = builder.Environment.IsDevelopment() && 
-    builder.Configuration.GetValue<bool>("KeyVault:UseLocalSecrets", false);
+    builder.Configuration.GetValue<bool>("KeyVault:UseLocalSecrets", true); // Default to true in development
 
 if (!useLocalSecrets)
 {
@@ -25,12 +25,35 @@ if (!useLocalSecrets)
         {
             Console.WriteLine($"Configuring Azure Key Vault with URI: {keyVaultUri}");
             
-            // Create DefaultAzureCredential with specific options for local development
-            var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
+            // Try to get credentials from configuration
+            string? clientId = builder.Configuration["AzureAd:ClientId"];
+            string? clientSecret = builder.Configuration["AzureAd:ClientSecret"];
+            string? tenantId = builder.Configuration["AzureAd:TenantId"];
+            
+            Azure.Core.TokenCredential credential;
+            
+            // Use ClientSecretCredential if all values are available
+            if (!string.IsNullOrEmpty(clientId) && !string.IsNullOrEmpty(clientSecret) && !string.IsNullOrEmpty(tenantId))
             {
-                ExcludeSharedTokenCacheCredential = true,
-                ExcludeManagedIdentityCredential = builder.Environment.IsDevelopment()
-            });
+                Console.WriteLine("Using ClientSecretCredential for Key Vault access");
+                credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
+            }
+            else 
+            {
+                // Create DefaultAzureCredential with specific options to ALWAYS avoid ManagedIdentityCredential
+                var credentialOptions = new DefaultAzureCredentialOptions
+                {
+                    ExcludeManagedIdentityCredential = true, // Always exclude to avoid the error
+                    ExcludeSharedTokenCacheCredential = true,
+                    ExcludeVisualStudioCodeCredential = false,
+                    ExcludeAzureCliCredential = false,
+                    ExcludeVisualStudioCredential = false,
+                    ExcludeInteractiveBrowserCredential = false
+                };
+                
+                Console.WriteLine("Using DefaultAzureCredential with ManagedIdentity explicitly excluded");
+                credential = new DefaultAzureCredential(credentialOptions);
+            }
             
             builder.Configuration.AddAzureKeyVault(
                 new Uri(keyVaultUri),
@@ -55,6 +78,9 @@ if (!useLocalSecrets)
         {
             Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
         }
+        
+        // Continue without Key Vault - will use local configuration
+        Console.WriteLine("Continuing with local configuration...");
     }
 }
 else
@@ -62,11 +88,27 @@ else
     Console.WriteLine("Using local development secrets instead of Azure Key Vault");
 }
 
+// Register service for logging with enhanced debug output
+builder.Services.AddLogging(logging =>
+{
+    logging.ClearProviders();
+    logging.AddConsole();
+    logging.AddDebug();
+    
+    if (builder.Environment.IsDevelopment())
+    {
+        logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug); // More detailed logging in development
+    }
+});
+
 // Register KeyVaultDiagnostics service
 builder.Services.AddTransient<KeyVaultDiagnostics>();
 
 // Register FormTemplateService
 builder.Services.AddSingleton<IFormTemplateService, FormTemplateService>();
+
+// Register SharePoint service
+builder.Services.AddScoped<ISharePointService, SharePointService>();
 
 // Configure Azure AD authentication
 var initialScopes = builder.Configuration["MicrosoftGraph:Scopes"]?.Split(' ');
@@ -90,7 +132,7 @@ builder.Services.AddRazorPages()
 
 var app = builder.Build();
 
-// Verify Key Vault access during startup
+// Verify Key Vault access during startup, but don't crash if it fails
 if (!useLocalSecrets)
 {
     try
@@ -104,12 +146,12 @@ if (!useLocalSecrets)
         }
         else
         {
-            app.Logger.LogWarning("Key Vault access check failed. The application might not have access to secrets.");
+            app.Logger.LogWarning("Key Vault access check failed. The application will use local configuration.");
         }
     }
     catch (Exception ex)
     {
-        app.Logger.LogError(ex, "Error verifying Key Vault access");
+        app.Logger.LogError(ex, "Error verifying Key Vault access - will use local configuration");
     }
 }
 
@@ -126,6 +168,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
