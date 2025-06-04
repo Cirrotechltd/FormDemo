@@ -39,6 +39,33 @@
       "validation": {
         "required": true
       }
+    },
+    {
+      "type": "text",
+      "name": "MedicalSchool",
+      "label": "Medical School",
+      "placeholder": "Enter your medical school",
+      "validation": {
+        "required": true
+      }
+    },
+    {
+      "type": "number",
+      "name": "GraduationYear",
+      "label": "Graduation Year",
+      "placeholder": "Enter your expected graduation year",
+      "validation": {
+        "required": true
+      }
+    },
+    {
+      "type": "number",
+      "name": "YearOfStudy",
+      "label": "Year of Study",
+      "placeholder": "Enter your current year of study",
+      "validation": {
+        "required": true
+      }
     }
   ],
   "submit": {
